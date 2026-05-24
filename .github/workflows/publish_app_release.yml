@@ -1,15 +1,17 @@
 name: app-build-ios
+
 on:
   push:
     tags:
       - "v*"
-  workflow_dispatch: 
+  workflow_dispatch:
 
 jobs:
   build-ios:
     runs-on: macos-latest
     permissions:
       contents: write
+
     steps:
       # 1. 签出代码
       - uses: actions/checkout@v4
@@ -27,11 +29,19 @@ jobs:
           cd simple_live_app
           flutter pub get
 
-      # 4. 🔴 终极防御：暴力强推降级依赖，消灭 7.1.1 版本的 isUltraConstrained 报错
+      # 4a. 强制降级 connectivity_plus（消灭 isUltraConstrained 报错）
       - name: Force downgrade connectivity_plus
         run: |
           cd simple_live_app
           flutter pub add connectivity_plus:6.1.1
+
+      # 4b. 强制降级 device_info_plus（消灭 isiOSAppOnVision 报错）
+      #     device_info_plus 12.x 引用了 iOS 16+ SDK 的 isiOSAppOnVision API
+      #     降级到 10.1.2 可彻底规避该问题
+      - name: Force downgrade device_info_plus
+        run: |
+          cd simple_live_app
+          flutter pub add device_info_plus:10.1.2
 
       # 5. 清理并重新安装 iOS 依赖
       - name: Clean and Install CocoaPods
