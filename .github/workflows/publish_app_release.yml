@@ -1,5 +1,4 @@
 name: app-build-ios
-# 支持推送以 v 开头的 Tag 触发，也支持在 Actions 页面手动点击按钮触发
 on:
   push:
     tags:
@@ -10,68 +9,67 @@ jobs:
   build-ios:
     runs-on: macos-latest
     permissions:
-      contents: write # 明确赋予该任务对仓库内容的写入权限，防止发布 Release 报权限错
+      contents: write
     steps:
-      # 签出当前分支的代码
+      # 1. 签出代码
       - uses: actions/checkout@v4
 
-      # 设置 Flutter 所需的 Java 环境
-      - uses: actions/setup-java@v4
-        with:
-          distribution: "zulu"
-          java-version: "17"
-
-      # 设置 Flutter 环境
+      # 2. 设置 Flutter 环境
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.38.x"
           cache: true
 
-      # 更新 Flutter 的 packages
+      # 3. 修复并恢复 Flutter 依赖
       - name: Restore packages
         run: |
           cd simple_live_app
           flutter pub get
 
-      # 编译 iOS 产物（--no-codesign 表示跳过苹果开发者证书签名，适合越狱或自签测试包）
+      # 4. 关键修复：安装 iOS 的 CocoaPods 依赖
+      - name: Install CocoaPods Dependencies
+        run: |
+          cd simple_live_app/ios
+          pod install --repo-update
+
+      # 5. 编译 iOS 产物
       - name: Build IPA
         run: |
           cd simple_live_app
           flutter build ios --release --no-codesign
 
-      # 创建未签名的 .ipa 安装包结构
+      # 6. 打包未签名的 .ipa 安装包
       - name: Create IPA Container
         run: |
           cd simple_live_app
-          mkdir build/ios/iphoneos/Payload
+          mkdir -p build/ios/iphoneos/Payload
           cp -R build/ios/iphoneos/Runner.app build/ios/iphoneos/Payload/Runner.app
           cd build/ios/iphoneos/
           zip -q -r ios_no_sign.ipa Payload
           cd ../../..
 
-      # 将编译好的 ipa 包作为 Artifacts 上传备份（可在 Actions 页面直接下载）
+      # 7. 上传到 Actions 产物区
       - name: Upload IPA to Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ios-build
           path: simple_live_app/build/ios/iphoneos/ios_no_sign.ipa
 
-      # 读取版本信息（用于生成 Release 的标题和描述）
+      # 8. 读取版本号
       - name: Read version info
         id: version
         uses: juliangruber/read-file-action@v1
         with:
           path: assets/app_version.json
 
-      # 自动发布到 Release 页面
+      # 9. 自动发布到 Release
       - name: Upload iOS to Release
         uses: softprops/action-gh-release@v1
         with:
           name: "${{ fromJson(steps.version.outputs.content).version }}"
           body: "${{ fromJson(steps.version.outputs.content).version_desc }}"
           prerelease: ${{ fromJson(steps.version.outputs.content).prerelease }}
-          # 👈 核心修复：如果是手动点击运行，自动使用 v1.0.0-ios-test 作为临时标签名，防止报错
           tag_name: ${{ github.ref_type == 'tag' && github.ref_name || 'v1.0.0-ios-test' }}
           token: ${{ secrets.GITHUB_TOKEN }}
           files: |
