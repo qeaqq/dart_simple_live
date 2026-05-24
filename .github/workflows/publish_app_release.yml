@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-ios:
-    runs-on: macos-latest
+    runs-on: macos-15 # 👈 已经升级为 macos-15，提供更新的 Xcode/Swift 支持
     permissions:
       contents: write
     steps:
@@ -21,13 +21,13 @@ jobs:
           flutter-version: "3.38.x"
           cache: true
 
-      # 3. 修复并恢复 Flutter 依赖
+      # 3. 恢复 Flutter 依赖
       - name: Restore packages
         run: |
           cd simple_live_app
           flutter pub get
 
-      # 4. 关键修复：安装 iOS 的 CocoaPods 依赖
+      # 4. 安装 iOS CocoaPods 依赖
       - name: Install CocoaPods Dependencies
         run: |
           cd simple_live_app/ios
