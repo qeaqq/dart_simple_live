@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-ios:
-    runs-on: macos-15 # 👈 已经升级为 macos-15，提供更新的 Xcode/Swift 支持
+    runs-on: macos-latest
     permissions:
       contents: write
     steps:
@@ -21,13 +21,13 @@ jobs:
           flutter-version: "3.38.x"
           cache: true
 
-      # 3. 恢复 Flutter 依赖
+      # 3. 恢复 Flutter 依赖（此时它会读取你刚刚修改的 pubspec.yaml 并下载 6.1.1 版本）
       - name: Restore packages
         run: |
           cd simple_live_app
           flutter pub get
 
-      # 4. 安装 iOS CocoaPods 依赖
+      # 4. 重新生成并安装 iOS 依赖
       - name: Install CocoaPods Dependencies
         run: |
           cd simple_live_app/ios
